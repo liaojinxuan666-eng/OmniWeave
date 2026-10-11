@@ -31,7 +31,7 @@ class OmniWeaveModel(nn.Module):
         elif isinstance(module, nn.Embedding):
             nn.init.normal_(module.weight, mean=0.0, std=0.02)
 
-    def forward(self, input_ids, latency_budget=1.0, memory_budget=1.0, mem_mode="fast"):
+    def forward(self, input_ids, latency_budget=1.0, memory_budget=1.0, mem_mode="fast", reset_memory=False):
         B, L = input_ids.shape
         device = input_ids.device
         positions = torch.arange(L, device=device).unsqueeze(0).expand(B, L)
@@ -40,7 +40,7 @@ class OmniWeaveModel(nn.Module):
 
         total_aux_loss = 0.0
         for block in self.blocks:
-            x, aux_loss = block(x, latency_budget, memory_budget, mem_mode)
+            x, aux_loss = block(x, latency_budget, memory_budget, mem_mode, reset_memory)
             total_aux_loss += aux_loss
 
         x = self.norm_out(x)

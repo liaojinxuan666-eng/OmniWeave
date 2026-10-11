@@ -29,7 +29,6 @@ class DummyByteDataset(Dataset):
         return self.size
 
     def __getitem__(self, idx):
-        # 模拟随机字节流
         x = torch.randint(0, VOCAB_SIZE, (self.seq_len,))
         y = torch.roll(x, shifts=-1)  # 预测下一个字节
         return x, y
@@ -63,8 +62,8 @@ for epoch in range(EPOCHS):
         
         optimizer.zero_grad()
         
-        # 前向传播
-        logits, aux_loss = model(x, latency_budget=1.0, memory_budget=1.0, mem_mode="fast")
+        # 前向传播（加入 reset_memory=True）
+        logits, aux_loss = model(x, latency_budget=1.0, memory_budget=1.0, mem_mode="fast", reset_memory=True)
         
         # 计算任务损失
         task_loss = F.cross_entropy(
@@ -105,6 +104,6 @@ print("训练完成！")
 model.eval()
 with torch.no_grad():
     test_input = torch.randint(0, VOCAB_SIZE, (2, SEQ_LEN)).to(DEVICE)
-    test_logits, test_aux = model(test_input, latency_budget=0.5, memory_budget=0.5, mem_mode="warm")
+    test_logits, test_aux = model(test_input, latency_budget=0.5, memory_budget=0.5, mem_mode="warm", reset_memory=True)
     print(f"推理模式输出形状: {test_logits.shape}")
     print(f"推理模式辅助损失: {test_aux.item():.6f}")

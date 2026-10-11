@@ -15,7 +15,7 @@ class WeaveBlock(nn.Module):
         self.router = BudgetAwareRouter(d_model, num_operators=2)
         self.mem = MemWeave(d_model)
 
-    def forward(self, x, latency_budget=1.0, memory_budget=1.0, mem_mode="fast"):
+    def forward(self, x, latency_budget=1.0, memory_budget=1.0, mem_mode="fast", reset_memory=False):
         residual = x
         x_norm = self.norm(x)
         
@@ -25,18 +25,17 @@ class WeaveBlock(nn.Module):
         # 2. 计算负载均衡损失
         aux_loss = self.router.compute_load_balancing_loss(route_weights)
         
-        # 3. 算子计算
+        # 3. 算子计算（修复广播维度的 unsqueeze）
         out_ssm = self.ssm(x_norm)
         out_attn = self.linear_attn(x_norm)
         
-        # 修复：添加 unsqueeze(-1) 保证张量广播正确
         w_ssm = route_weights[:, 0:1].unsqueeze(-1)   # [B, 1, 1]
         w_attn = route_weights[:, 1:2].unsqueeze(-1)  # [B, 1, 1]
         
         out = w_ssm * out_ssm + w_attn * out_attn
         
-        # 4. 记忆融合
-        mem_out = self.mem(x_norm, mode=mem_mode)
+        # 4. 记忆融合（传入 reset_memory 切断跨轮次的计算图）
+        mem_out = self.mem(x_norm, mode=mem_mode, reset=reset_memory)
         if mem_out is not None:
             out = out + mem_out
             

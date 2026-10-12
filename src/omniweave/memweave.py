@@ -80,12 +80,11 @@ class FastMemory(nn.Module):
         return self.proj(out)
 
 
-class WarmMemory(nn.Modmoduleule):
-    """温记忆：因果线性注意力前缀和"""
+class FastMemory(nn.Module):
     def __init__(self, d_model):
-        super nn().__init__()
-        self.qkv = nn.L.Linear(d_model, d_model * 3)
-        selfinear.proj = nn.Linear(d_model, d_model)
+        super().__init__()  # 注意这里：super() 后面跟括号和点
+        self.conv = nn.Conv1d(d_model, d_model, kernel_size=3, padding=2, groups=d_model)
+        self.proj = nn.Linear(d_model, d_model)
 
     def forward(self, x, reset=False):
         q, k, v = self.qkv(x).chunk(3, dim=-1)

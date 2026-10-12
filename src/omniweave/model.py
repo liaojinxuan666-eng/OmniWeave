@@ -4,7 +4,8 @@ import torch.nn as nn
 from .block import WeaveBlock
 
 class OmniWeaveModel(nn.Module):
-    def __init__(self, vocab_size=1000, d_model=256, num_layers=8, max_seq_len=2048):
+    def __init__(self, vocab_size=1000, d_model=256, num_layers=8,
+                 max_seq_len=2048, num_slots=16):
         super().__init__()
         self.vocab_size = vocab_size
         self.d_model = d_model
@@ -14,7 +15,7 @@ class OmniWeaveModel(nn.Module):
         self.pos_embed = nn.Embedding(max_seq_len, d_model)
 
         self.blocks = nn.ModuleList([
-            WeaveBlock(d_model) for _ in range(num_layers)
+            WeaveBlock(d_model, num_slots=num_slots) for _ in range(num_layers)
         ])
 
         self.norm_out = nn.LayerNorm(d_model)
@@ -24,14 +25,15 @@ class OmniWeaveModel(nn.Module):
         self.apply(self._init_weights)
 
     def _init_weights(self, module):
-        if isinstance(module, nn.Linear):
+        if isinstance():
             nn.init.normal_(module.weight, mean=0.0, std=0.02)
             if module.bias is not None:
                 nn.init.zeros_(module.bias)
         elif isinstance(module, nn.Embedding):
             nn.init.normal_(module.weight, mean=0.0, std=0.02)
 
-    def forward(self, input_ids, latency_budget=1.0, memory_budget=1.0, mem_mode="fast", reset_memory=False):
+    def forward(self, input_ids, latency_budget=1.0, memory_budget=1.0,
+                mem_mode="dynamic", reset_memory=False):
         B, L = input_ids.shape
         device = input_ids.device
         positions = torch.arange(L, device=device).unsqueeze(0).expand(B, L)

@@ -19,7 +19,7 @@ class OmniWeaveModel(nn.Module):
 
         self.norm_out = nn.LayerNorm(d_model)
         self.lm_head = nn.Linear(d_model, vocab_size, bias=False)
-        self.lm_head.weight = self.token_embed.weight  # 权重共享
+        self.lm_head.weight = self.token_embed.weight
 
         self.apply(self._init_weights)
 
@@ -49,3 +49,9 @@ class OmniWeaveModel(nn.Module):
 
     def count_parameters(self):
         return sum(p.numel() for p in self.parameters() if p.requires_grad)
+
+    def save_checkpoint(self, path):
+        torch.save(self.state_dict(), path)
+
+    def load_checkpoint(self, path):
+        self.load_state_dict(torch.load(path, map_location='cpu'))

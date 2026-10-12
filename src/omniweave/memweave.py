@@ -1,39 +1,45 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 class FastMemory(nn.Module):
+    """快记忆：SSM 状态，使用因果卷积保留时序结构"""
     def __init__(self, d_model):
         super().__init__()
         self.d_model = d_model
-        self.state = None
+        # 使用深度可分离因果卷积，作为极简 SSM
+        self.conv = nn.Conv1d(d_model, d_model, kernel_size=3, padding=2, groups=d_model)
+        self.proj = nn.Linear(d_model, d_model)
 
     def forward(self, x, reset=False):
-        batch_size = x.size(0)
-        if reset or self.state is None:
-            self.state = torch.zeros(batch_size, self.d_model, device=x.device)
-        x_mean = x.mean(dim=1)
-        # 关键修复：更新状态后立刻 detach()，切断计算图
-        self.state = (self.state * 0.9 + x_mean * 0.1).detach()
-        return self.state.unsqueeze(1)
+        # x: [B, L, D] -> [B, D, L]
+        x_t = x.transpose(1, 2)
+        # 因果卷积，截断未来信息
+        out = self.conv(x_t)[:, :, :-2] 
+        out = out.transpose(1, 2) # 恢复 [B, L, D]
+        return self.proj(out)
 
 class WarmMemory(nn.Module):
+    """温记忆：线性注意力状态矩阵，保留时序"""
     def __init__(self, d_model):
         super().__init__()
         self.d_model = d_model
-        self.state_kv = None
+        self.qkv = nn.Linear(d_model, d_model * 3)
+        self.proj = nn.Linear(d_model, d_model)
 
     def forward(self, x, reset=False):
-        batch_size = x.size(0)
-        if reset or self.state_kv is None:
-            self.state_kv = torch.zeros(batch_size, self.d_model, self.d_model, device=x.device)
-        
-        k = x.mean(dim=1, keepdim=True)
-        v = x.mean(dim=1, keepdim=True)
-        # 关键修复：同样加上 detach()
-        self.state_kv = (self.state_kv * 0.95 + torch.bmm(k.transpose(1, 2), v) * 0.05).detach()
-        return torch.bmm(x, self.state_kv)
+        B, L, D = x.shape
+        q, k, v = self.qkv(x).chunk(3, dim=-1)
+        # 简化版因果线性注意力：使用累积和
+        q = F.elu(q) + 1.0
+        k = F.elu(k) + 1.0
+        # 计算前缀和，模拟线性注意力状态累积
+        k_cumsum = torch.cumsum(k, dim=1)
+        out = q * k_cumsum
+        return self.proj(out)
 
 class ColdMemory(nn.Module):
+    """冷记忆：压缩 KV 检索，存在 CPU 或外部"""
     def __init__(self, max_size=1024):
         super().__init__()
         self.max_size = max_size
@@ -47,7 +53,7 @@ class ColdMemory(nn.Module):
     def retrieve(self, query):
         if not self.buffer: 
             return None
-        stacked = torch.cat(self.buffer, dim=1).to(query.device)
+        stacked = torch.cat(self.buffer, dim=0).to(query.device)
         return stacked
 
 class MemWeave(nn.Module):

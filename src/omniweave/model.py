@@ -25,10 +25,12 @@ class OmniWeaveModel(nn.Module):
         self.apply(self._init_weights)
 
     def _init_weights(self, module):
-        if isinstance():
+        # 判断 module 是否是线性层
+        if isinstance(module, nn.Linear):
             nn.init.normal_(module.weight, mean=0.0, std=0.02)
             if module.bias is not None:
                 nn.init.zeros_(module.bias)
+        # 判断 module 是否是嵌入层
         elif isinstance(module, nn.Embedding):
             nn.init.normal_(module.weight, mean=0.0, std=0.02)
 

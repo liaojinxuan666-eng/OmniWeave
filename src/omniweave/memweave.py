@@ -29,7 +29,7 @@ class DynamicMemorySlots(nn.Module):
                 w_write_mean = w_write.mean(dim=1)
                 w_forget_mean = w_forget.mean(dim=1)
                 weighted_x = torch.einsum('bls,bld->bsd', w_write, x)
-                norm = w_write.sum(dim=1, keepdim=True) + 1e-8
+                norm = w_write.sum(dim=1).unsqueeze(-1) + 1e-8
                 write_content = (weighted_x / norm).mean(dim=0)
                 w_write_batch = w_write_mean.mean(dim=0)
                 w_forget_batch = w_forget_mean.mean(dim=0)

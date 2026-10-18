@@ -26,7 +26,7 @@ class OmniWeaveCore(nn.Module):  # 注意这里：去掉了空格
         self.hidden_size = self.base_model.config.hidden_size
         
         # 实例化我们的核心架构：动态记忆槽
-        self.memweave = MemWeave(d_model=self.hidden_size, num_slots=num_slots).to(self.base_model.device)
+        self.memweave = MemWeave(d_model=self.hidden_size, num_slots=num_slots).half().to(self.base_model.device)
 
     def forward(self, input_ids, use_memory=True):
         outputs = self.base_model(input_ids, output_hidden_states=True)

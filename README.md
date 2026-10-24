@@ -79,7 +79,7 @@
 🛠️ 快速开始
 # 克隆仓库
 git clone https://github.com/liaojinxuan666-eng/OmniWeave.git
-cd OmniWe不是在ave
+cd OmniWeave
 
 # 安装依赖
 pip install torch torchvision torchaudio tiktoken tqdm
